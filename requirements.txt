@@ -1,0 +1,11 @@
+name: pygeospatial
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pip
+  - python[version='>3.14.3']
+  - pyproj
+  - matplotlib
+  - geopandas
+prefix: /opt/anaconda3/envs/pygeospatial

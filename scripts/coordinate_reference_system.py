@@ -12,13 +12,14 @@ import matplotlib.pyplot as plt
 
 ## ---- Import shapefiles ------------------------------------------------------
 
-world = gpd.read_file(
+url_world = (
     "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
 )
-
-capitals = gpd.read_file(
+url_capitals = (
     "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_populated_places.zip"
 )
+world = gpd.read_file(filename=url_world)
+capitals = gpd.read_file(filename=url_capitals)
 
 capitals = capitals[capitals["FEATURECLA"] == "Admin-0 capital"]
 

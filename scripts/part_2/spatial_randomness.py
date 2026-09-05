@@ -6,19 +6,12 @@
 ## ---- Load required libraries ------------------------------------------------
 
 
-from pandas.core.interchange import column
-import contextily  # noqa: F401
-import geopandas as gpd
 import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn
 import seaborn as sns
-import splot
-from splot import esda as esdaplot
-from IPython.display import Markdown, display, display_html, display_markdown
-from numpy.random import seed
+from IPython.display import Markdown, display
 from pysal.explore import esda
 from pysal.lib import weights
+from splot import esda as esdaplot
 from splot.esda import plot_moran
 
 # ------------------------------------------------------------------------------

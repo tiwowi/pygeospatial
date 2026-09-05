@@ -8,6 +8,9 @@
 
 import pandas as pd
 import geopandas as gpd
+import statistics
+
+### Static maps ----
 import matplotlib.pyplot as plt
 import pysal
 import splot
@@ -15,6 +18,11 @@ import seaborn as sns
 import geoplot.crs as gcrs
 import geoplot as gplt
 
+
+### Interactive map ----
+import geoviews
+
+geoviews.extension("bokeh")
 
 ## ---- Read in data -----------------------------------------------------------
 
@@ -50,7 +58,7 @@ sns.displot(listings_sub["price"], kde=True)
 plt.show()
 
 
-## ---- Exploratory Spatial Data Analysis --------------------------------------
+## -------------------------------------- Exploratory Spatial Data Analysis ----
 
 
 ### Convert pandas dataframe to geopandas dataframe ----
@@ -93,4 +101,65 @@ gplt.choropleth(
     cmap="Reds",
     legend=True,
     legend_kwargs={"orientation": "horizontal"},
+)
+
+
+## ---- Converting point data up to higher-order geographies -------------------
+
+
+### Read in the New York Census Tracts ----
+ny_tracts_path = (
+    "https://www2.census.gov/geo/tiger/TIGER2021/TRACT/tl_2021_36_tract.zip"
+)
+ny_tracts = gpd.read_file(ny_tracts_path)
+ny_tracts.to_crs(4326, inplace=True)
+
+### Subset the census tracts to those in the New York CBSA ----
+cbsa_path = "https://www2.census.gov/geo/tiger/TIGER2021/CBSA/tl_2021_us_cbsa.zip"
+cbsas = gpd.read_file(cbsa_path)
+ny_cbsa = cbsas[cbsas["GEOID"] == "35620"]
+mask = ny_tracts.intersects(ny_cbsa.loc[620, "geometry"]).loc()
+
+### Aggregate the airbnb locations to the NY census tracts ----
+ny_tracts_sj = gpd.sjoin(left_df=ny_tracts, right_df=listings_sub_gpd, how="left")
+ny_tracts_sj = ny_tracts_sj[["GEOID", "price", "geometry"]]
+ny_tracts_agg = ny_tracts_sj.dissolve(by="GEOID", aggfunc="mean")
+
+### Visualise the distribution of price across census tract ----
+gplt.choropleth(
+    ny_tracts_agg,
+    hue="price",
+    cmap="inferno_r",
+    legend=True,
+    figsize=(60, 15),
+    legend_kwargs={"orientation": "vertical"},
+)
+
+### Exclude outliers ----
+#### Get mean and standard deviation of price ----
+mean_price = statistics.mean(ny_tracts_agg["price"].dropna())
+stdev = statistics.stdev(ny_tracts_agg["price"].dropna())
+
+#### Drop records that are outliers ----
+ny_tracts_agg = ny_tracts_agg[ny_tracts_agg["price"] < mean_price + stdev]
+
+#### Plot ----
+gplt.choropleth(
+    ny_tracts_agg,
+    hue="price",
+    cmap="inferno_r",
+    legend=True,
+    figsize=(60, 15),
+    legend_kwargs={"orientation": "vertical"},
+)
+
+#### Plot with geoviews ----
+map = geoviews.Polygons(data=ny_tracts_agg, vdims=["price", "GEOID"]).opts(
+    height=600,
+    width=900,
+    title="NYC Tract Price Distribution",
+    tools=["hover", "wheel_zoom", "box_select"],
+    cmap="viridis",
+    colorbar=True,
+    colorbar_position="bottom",
 )

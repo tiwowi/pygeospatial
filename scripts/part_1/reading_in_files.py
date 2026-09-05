@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 
 import sys
-from scripts.coordinate_reference_system import world, capitals, url_capitals, url_world
+from scripts.part_1.working_with_crs import world, capitals, url_capitals, url_world
 
 
 ## ---- Leveraging `mask` argument ---------------------------------------------

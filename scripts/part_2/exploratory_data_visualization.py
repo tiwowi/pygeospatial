@@ -6,21 +6,15 @@
 ## ---- Load required libraries ------------------------------------------------
 
 
-import pandas as pd
-import geopandas as gpd
+# Standard library
 import statistics
-
-### Static maps ----
-import matplotlib.pyplot as plt
-import pysal
-import splot
-import seaborn as sns
-import geoplot.crs as gcrs
+import geopandas as gpd
 import geoplot as gplt
-
-
-### Interactive map ----
+import geoplot.crs as gcrs
 import geoviews
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 geoviews.extension("bokeh")
 

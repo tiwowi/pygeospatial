@@ -112,6 +112,6 @@ ny_tracts_agg.plot(
 )
 plt.show()
 
-#### Create a LISA-cluster map: HH, HL, LH, LL ----
+#### Create a LISA-cluster map: HH, HL, LH, and LL ----
 fix, ax = plt.subplots(ncols=1, figsize=(10, 10))
 esdaplot.lisa_cluster(moran_loc=price_lisa, gdf=ny_tracts_agg, ax=ax)

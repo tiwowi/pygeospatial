@@ -8,6 +8,7 @@
 
 # Standard library
 import statistics
+
 import geopandas as gpd
 import geoplot as gplt
 import geoplot.crs as gcrs

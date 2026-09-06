@@ -339,3 +339,40 @@ f.update_layout(
     title_x=0.5,
 )
 f.show()
+
+
+## ---- With Spatial Constraints -----------------------------------------------
+
+
+### Instantiate model ----
+ahc_spat = AgglomerativeClustering(
+    n_clusters=5, connectivity=w.sparse, linkage="ward"
+).fit(X=ny_merged_scaled)
+
+### Add model labels to the dataframe ----
+ny_merge_2["ward5wgt_label"] = model.labels_
+ny_merged_scaled_df["ward5wgt_label"] = model.labels_
+ny_merge_2.plot(column="ward5wgt_label", legend=False, ax=ax)
+
+
+### Use a KNN-distance matrix ----
+knn_w = KNN.from_dataframe(ny_merge_2, k=10)
+
+ahc_knn_spat = AgglomerativeClustering(
+    n_clusters=5, connectivity=w.sparse, linkage="ward"
+).fit(X=ny_merged_scaled)
+
+
+ny_merge_2["ward5_knnwgt_label"] = model.labels_
+ny_merged_scaled_df["ward5_knnwgt_label"] = model.labels_
+
+### Plot ----
+fig, ax = plt.subplots(ncols=1, figsize=(40, 20))
+ny_merge_2.plot(
+    column="ward5_knnwgt_label",
+    legend=False,
+    cmap="Set2",
+    ax=ax,
+    categorical=True,
+    linewidth=0,
+)

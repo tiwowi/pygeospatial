@@ -11,11 +11,19 @@
 ## ---- Load required libraries ------------------------------------------------
 
 
+from IPython.core.pylabtools import figsize
+from scripts.part_1.working_with_crs import fig
 from census import Census
 from us import states
 import geopandas as gpd
 import pandas as pd
-
+import matplotlib.pyplot as plt
+from libpysal.weights import Queen, KNN
+from esda.moran import Moran
+import numpy as np
+from sklearn.preprocessing import robust_scale
+from sklearn.cluster import KMeans, AgglomerativeClustering
+import geoplot as gplt
 
 ## ---- Pull data from the Annual Community Survey  ----------------------------
 
@@ -134,3 +142,128 @@ ny_merge.rename(
     },
     inplace=True,
 )
+
+
+geo_demo_rn = [
+    "TotPop",  # "Total Population"
+    "TotPopOccUnits",  # "Total population in occupied housing units"
+    "TotNumOwnOccUnit",  # "Total number of owner occupied units"
+    "TotNumRentOccUnit",  # "Total number of renter occupied units"
+    "PopLTHSDip",  # "Population with less than a high school diploma"
+    "PopHSDip",  # "Population with high school diploma or equivalent"
+    "PopAssoc",  # "Population with some college/associates degree"
+    "PopBA",  # "Population with bachelors degree"
+    "PopGrad",  # "Population with a graduate degree"
+    "PopIncLT10",  # "Population with income less than 9999"
+    "PopInc1015",  # "Population with income between 10000 and 14999"
+    "PopInc1525",  # "Population with income between 15000 and 24999"
+    "PopInc2535",  # "Population with income between 25000 and 34999"
+    "PopInc3550",  # "Population with income between 35000 and 49999"
+    "PopInc5065",  # "Population with income between 50000 and 64999"
+    "PopInc6575",  # "Population with income between 65000 and 74999"
+    "PopIncGT75",  # "Population with income of 75000 or more"
+    "UnempPop",  # "Population in labor force and unemployed"
+    "RetPop",  # "Population that is retired with retirement income"
+    "RetPopNoRetInc",  # "Retired without retirement income"
+    "PopBlwPovLvl",  # "Population with income below poverty level in past 12 months"
+]
+
+### Cleaning up the dataframe ----
+geo_demo_rn.append("geometry")
+ny_merge_2 = ny_merge[geo_demo_rn]
+geo_demo_rn.remove("geometry")
+
+### Dropping any areas without population ----
+ny_merge_2 = ny_merge_2[ny_merge_2["TotPop"] > 0]
+
+### Resetting the index to assist in index based operations later on ----
+ny_merge_2.reset_index(inplace=True)
+
+
+## ---- Conduct Exploratory Data Analysis --------------------------------------
+
+
+### Plot a map of each extracted variables from the Census API ----
+fix, axes = plt.subplots(ncols=3, nrows=7, figsize=(75, 75), layout="tight")
+axes = axes.flatten()
+plt.rcParams["font.size"] = "40"
+
+#### Iterate over the list of variables ----
+for ind, col in enumerate(geo_demo_rn):
+    ax = axes[ind]
+    ny_merge_2.plot(
+        column=col,
+        ax=ax,
+        scheme="quantiles",
+        linewidth=2,
+        cmap="coolwarm",
+        legend=True,
+        legend_kwds={"loc": "center left", "bbox_to_anchor": (2, 0.5), "fmt": "{:.0f}"},
+    )
+    ax.set_axis_off()
+    ax.set_title(col)
+    plt.subplots_adjust(wspace=None, hspace=None)
+    plt.show()
+
+
+## ---- Measuring Spatial Autocorrelation --------------------------------------
+
+
+### Calculate Queen spatial weights matrix ----
+w = Queen.from_dataframe(ny_merge_2)
+np.random.seed(54321)
+
+### Calculate Moran's I index for each variable ----
+moransi_results = [Moran(ny_merge_2[i], w) for i in geo_demo_rn]
+
+moransi_results = [
+    (v, res.I, res.p_sim) for v, res in zip(geo_demo_rn, moransi_results)
+]
+
+table = pd.DataFrame(
+    moransi_results, columns=["GEODEMO Var", "Moran's I", "P-value"]
+).set_index("GEODEMO Var")
+
+
+## ---- Scale the data ---------------------------------------------------------
+
+
+ny_merged_scaled = robust_scale(ny_merge_2[geo_demo_rn])
+
+
+## ---- K-Means Clustering -----------------------------------------------------
+
+
+np.random.seed(54321)
+
+### Elbow plot ----
+distortions = []
+K = range(1, 15)
+for k in K:
+    kmeans = KMeans(n_clusters=k).fit(ny_merged_scaled)
+    distortions.append(kmeans.inertia_)
+plt.figure(figsize=(40, 25))
+plt.plot(K, distortions, "bx-")
+plt.xlabel("Number of clusters")
+plt.ylabel("Distortion")
+plt.title("Elbow method for optimal k")
+plt.show()
+
+### K-Means = 5 Clusters ----
+kmeans_5 = KMeans(n_clusters=5).fit(ny_merged_scaled)
+
+### Visualise ----
+### Visualise the distribution of price across census tract ----
+ny_merge_2["kmeans_5_label"] = kmeans_5.labels_
+f, ax = plt.subplots(1, figsize=(40, 20))
+ny_merge_2.plot(
+    ax=ax, column="kmeans_5_label", legend=True, categorical=True, linewidth=0.5
+)
+
+### Cluster profiling ----
+kgdistr = ny_merge_2.groupby("kmeans_5_label").size()
+
+### Plot a cluster radial plot ----
+#### Create a dataframe of scaled data ----
+ny_merged_scaled_df = pd.DataFrame(ny_merged_scaled, columns=geo_demo_rn)
+ny_merged_scaled_df["km_6_label"] = km_6.labels

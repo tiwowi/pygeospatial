@@ -292,3 +292,25 @@ fi.update_layout(
     title_x=0.5,
 )
 fi.show()
+
+
+
+# ------------------------------------------------------------------------------
+#                      AGLOMERATIVE HIERARCHICAL CLUSTERS
+# ------------------------------------------------------------------------------
+
+
+## ---- Without Spatial Constraint ---------------------------------------------
+
+
+### Set seed ----
+np.random.seed(54321)
+
+### Instantiate the AHC Algorithm ----
+model = AgglomerativeClustering(n_clusters=5, linkage="ward")
+model.fit(X=ny_merged_scaled)
+ny_merge_2["ward5_label"] = model.labels_
+ny_merged_scaled["ward5_label"] = model.labels_
+
+### Profile ----
+ward5sizes = ny_merge_2.groupby("ward5_label").size()

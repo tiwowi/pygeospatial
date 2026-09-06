@@ -367,7 +367,7 @@ ny_merge_2["ward5_knnwgt_label"] = model.labels_
 ny_merged_scaled_df["ward5_knnwgt_label"] = model.labels_
 
 ### Plot ----
-fig, ax = plt.subplots(ncols=1, figsize=(40, 20))
+figu, ax = plt.subplots(ncols=1, figsize=(40, 20))
 ny_merge_2.plot(
     column="ward5_knnwgt_label",
     legend=False,

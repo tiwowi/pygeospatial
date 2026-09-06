@@ -11,7 +11,6 @@
 ## ---- Load required libraries ------------------------------------------------
 
 
-from IPython.core.pylabtools import figsize
 from scripts.part_1.working_with_crs import fig
 from census import Census
 from us import states
@@ -24,6 +23,7 @@ import numpy as np
 from sklearn.preprocessing import robust_scale
 from sklearn.cluster import KMeans, AgglomerativeClustering
 import geoplot as gplt
+import plotly.graph_objs as go
 
 ## ---- Pull data from the Annual Community Survey  ----------------------------
 
@@ -261,9 +261,34 @@ ny_merge_2.plot(
 )
 
 ### Cluster profiling ----
+#### Descriptive statistics of each cluster ----
 kgdistr = ny_merge_2.groupby("kmeans_5_label").size()
+k5means = ny_merge_2.groupby("kmeans_5_label")[geo_demo_rn].mean().round(2)
 
 ### Plot a cluster radial plot ----
 #### Create a dataframe of scaled data ----
 ny_merged_scaled_df = pd.DataFrame(ny_merged_scaled, columns=geo_demo_rn)
-ny_merged_scaled_df["km_6_label"] = km_6.labels
+ny_merged_scaled_df["kmeans_5_label"] = kmeans_5.labels_
+
+#### Calculate descriptive statistics ----
+k5means_s = ny_merged_scaled_df.groupby("kmeans_5_label")[geo_demo_rn].mean().round(2)
+
+### Plot a radial plot ----
+categories = k5means_s.columns
+fi = go.Figure()
+for g in k5means.index:
+    fi.add_trace(
+        go.Scatterpolar(
+            r=k5means_s.loc[g].values,
+            theta=categories,
+            fill="toself",
+            name=f"cluter #{g}",
+        )
+    )
+fi.update_layout(
+    polar={"radialaxis": {"visible": True, "range": [-2, 5]}},
+    showlegend=True,
+    title="KMeans Cluster Radial Plot",
+    title_x=0.5,
+)
+fi.show()

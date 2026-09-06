@@ -11,6 +11,7 @@
 ## ---- Load required libraries ------------------------------------------------
 
 
+from cmath import polar
 from scripts.part_1.working_with_crs import fig
 from census import Census
 from us import states
@@ -294,7 +295,6 @@ fi.update_layout(
 fi.show()
 
 
-
 # ------------------------------------------------------------------------------
 #                      AGLOMERATIVE HIERARCHICAL CLUSTERS
 # ------------------------------------------------------------------------------
@@ -310,7 +310,32 @@ np.random.seed(54321)
 model = AgglomerativeClustering(n_clusters=5, linkage="ward")
 model.fit(X=ny_merged_scaled)
 ny_merge_2["ward5_label"] = model.labels_
-ny_merged_scaled["ward5_label"] = model.labels_
+ny_merged_scaled_df["ward5_label"] = model.labels_
 
 ### Profile ----
 ward5sizes = ny_merge_2.groupby("ward5_label").size()
+
+### Calculate descriptive statistics ----
+ahc_nspat = ny_merged_scaled_df.groupby("ward5_label")[geo_demo_rn].mean().round(2)
+
+### Radial plot ----
+cat = ahc_nspat.columns
+f = go.Figure()
+
+for group in ahc_nspat.index:
+    f.add_trace(
+        go.Scatterpolar(
+            r=ahc_nspat.loc[group].values,
+            theta=cat,
+            fill="toself",
+            name=f"cluster {group}",
+        )
+    )
+
+f.update_layout(
+    polar={"radialaxis": {"visible": True, "range": [-2, 6]}},
+    showlegend=True,
+    title="AHC Cluster Radial Plot",
+    title_x=0.5,
+)
+f.show()

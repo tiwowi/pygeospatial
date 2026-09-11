@@ -9,6 +9,9 @@ import geopandas as gpd
 import pandas as pd
 import numpy as np
 from pysal.model import spreg
+import plotly.express as px
+import plotly.io as pio
+from IPython.display import HTML
 
 ## ---- Load pre-computed GeoDataFrame ------------------------------------------
 
@@ -22,7 +25,7 @@ boroughs = gpd.read_parquet(DATA_DIR / "boroughs.parquet")
 ### Subset Manhatan ----
 manhatan = boroughs[boroughs["BoroName"] == "Manhattan"].to_crs("EPSG:4326")
 listing_mask = listings_sub_gpd.geometry.within(manhatan.loc[3, "geometry"])
-listing_manhatan = listings_sub_gpd[listing_mask]
+listing_manhatan = listings_sub_gpd.loc[listing_mask]
 
 ### Select variables ----
 voi = [
@@ -69,4 +72,42 @@ ols_model = spreg.OLS(
     x=listing_manhatan_subset[explanatory_vars].values,
     name_y="price",
     name_x=explanatory_vars,
+)
+
+
+# ------------------------------------------------------------------------------
+#                   EXPLORING UNMODELED SPATIAL RELATIONSHIP
+# ------------------------------------------------------------------------------
+
+
+## ----  -----------
+
+
+### Store residuals ----
+listing_manhatan_subset["ols_m_r"] = ols_model.u
+
+### Add neighbourhood cleaned variable ----
+listing_manhatan_subset = listing_manhatan_subset.merge(
+    right=listing_manhatan[["id", "neighbourhood_cleansed"]], how="left", on="id"
+)
+
+### Calculate average value of the residual by neighbourhood ----
+mean = (
+    listing_manhatan_subset.groupby("neighbourhood_cleansed")
+    .ols_m_r.mean()
+    .to_frame("neighbourhood_residual")
+)
+
+### Make a data frame ----
+residuals_neighbourhood = listing_manhatan_subset.merge(
+    right=mean, left_on="neighbourhood_cleansed", right_index=True
+).sort_values(by="neighbourhood_cleansed")
+
+### Plot distribution of the residuals in violin plot ----
+
+fig = px.violin(
+    data_frame=residuals_neighbourhood,
+    x="neighbourhood_cleansed",
+    y="ols_m_r",
+    color="neighbourhood_cleansed",
 )

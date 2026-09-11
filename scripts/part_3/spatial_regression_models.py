@@ -12,14 +12,25 @@ from pysal.model import spreg
 import plotly.express as px
 import plotly.io as pio
 from IPython.display import HTML
+from pysal.lib import weights
 
-## ---- Load pre-computed GeoDataFrame ------------------------------------------
+
+# ------------------------------------------------------------------------------
+#      ORDINARY LEAST SQUARE REGRESSION ANALYSIS WITHOUT SPATIAL ATTRIBUTES
+# ------------------------------------------------------------------------------
+
+
+## ---- Load pre-computed GeoDataFrame -----------------------------------------
+
 
 ### Loaded from data/ (produced by scripts/part_2/exploratory_data_visualization.py)
 ### instead of importing that script, which would re-run all of its code ----
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 listings_sub_gpd = gpd.read_parquet(DATA_DIR / "listings_sub_gpd.parquet")
 boroughs = gpd.read_parquet(DATA_DIR / "boroughs.parquet")
+
+
+## ---- Wrangle data -----------------------------------------------------------
 
 
 ### Subset Manhatan ----
@@ -54,8 +65,10 @@ listing_manhatan_subset = pd.get_dummies(
 listing_manhatan_subset["log_price"] = np.log(listing_manhatan_subset["price"])
 
 
-### Fit a model ----
-#### Define a list of explanatory variables ----
+## ---- Fit a model ------------------------------------------------------------
+
+
+### Define a list of explanatory variables ----
 explanatory_vars = [
     "beds",
     "room_type_Hotel room",
@@ -66,7 +79,7 @@ explanatory_vars = [
     "review_scores_rating",
 ]
 
-#### Model ----
+### Model ----
 ols_model = spreg.OLS(
     y=listing_manhatan_subset["log_price"].values,
     x=listing_manhatan_subset[explanatory_vars].values,
@@ -80,7 +93,7 @@ ols_model = spreg.OLS(
 # ------------------------------------------------------------------------------
 
 
-## ----  -----------
+## ---- Explore unmodelled spatial relationship --------------------------------
 
 
 ### Store residuals ----
@@ -111,3 +124,35 @@ fig = px.violin(
     y="ols_m_r",
     color="neighbourhood_cleansed",
 )
+
+
+## ---- Using spatial lags to check for geographic structure  ------------------
+
+
+### Bring in the geometry attribute ----
+residuals_neighbourhood = residuals_neighbourhood.merge(
+    right=listing_manhatan[["id", "geometry"]], how="left", on="id"
+)
+
+### Calculate spatial weights matrix ----
+knn = weights.KNN.from_dataframe(df=residuals_neighbourhood, k=5)
+
+### Spatial lag ----
+lag_residual = weights.spatial_lag.lag_spatial(w=knn, y=ols_model.u)
+
+### Plot the results of the spatial lag ----
+fig = px.scatter(
+    x=ols_model.u.flatten(),
+    y=lag_residual.flatten(),
+    trendline="ols",
+    width=800,
+    height=800,
+    title="Spatial Lag Residuals vs. OLS Residuals",
+)
+fig.update_layout(xaxis_title="OLS Residuals", yaxis_title="Spatial Lag Residuals")
+fig.show()
+
+
+# ------------------------------------------------------------------------------
+#                   TEACHING THE MODEL TO THINK SPATIALLY
+# ------------------------------------------------------------------------------

@@ -151,3 +151,8 @@ fig = px.scatter(
 )
 fig.update_layout(xaxis_title="OLS Residuals", yaxis_title="Spatial Lag Residuals")
 fig.show()
+
+
+# ------------------------------------------------------------------------------
+#                   TEACHING THE MODEL TO THINK SPATIALLY
+# ------------------------------------------------------------------------------

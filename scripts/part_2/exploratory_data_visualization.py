@@ -30,6 +30,7 @@ listings = pd.read_csv(inside_airbnb)
 ### Subset required columns only ----
 vars = [
     "id",
+    "room_type",
     "property_type",
     "neighbourhood_cleansed",
     "neighbourhood_group_cleansed",
@@ -38,6 +39,9 @@ vars = [
     "price",
     "latitude",
     "longitude",
+    "review_scores_rating",
+    "accommodates",
+    "bedrooms",
 ]
 
 listings_sub = listings[vars]

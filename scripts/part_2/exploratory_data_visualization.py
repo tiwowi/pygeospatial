@@ -8,6 +8,7 @@
 
 # Standard library
 import statistics
+from pathlib import Path
 
 import geopandas as gpd
 import geoplot as gplt
@@ -29,6 +30,7 @@ listings = pd.read_csv(inside_airbnb)
 ### Subset required columns only ----
 vars = [
     "id",
+    "room_type",
     "property_type",
     "neighbourhood_cleansed",
     "neighbourhood_group_cleansed",
@@ -37,6 +39,9 @@ vars = [
     "price",
     "latitude",
     "longitude",
+    "review_scores_rating",
+    "accommodates",
+    "bedrooms",
 ]
 
 listings_sub = listings[vars]
@@ -63,6 +68,17 @@ listings_sub_gpd = gpd.GeoDataFrame(
     crs=4326,
 )
 
+### Persist immediately so downstream scripts can load it even if later,
+### unrelated plotting code in this script fails ----
+if "__file__" in globals():
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+else:
+    PROJECT_ROOT = Path.cwd()
+
+DATA_DIR = PROJECT_ROOT / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+listings_sub_gpd.to_parquet(DATA_DIR / "listings_sub_gpd.parquet")
+
 ### Plot a map ----
 
 #### Point Plot ----
@@ -87,16 +103,25 @@ ax = gplt.kdeplot(
 )
 gplt.polyplot(df=boroughs, ax=ax, zorder=1)
 
+#### Save File in data\ ----
+boroughs.to_parquet(DATA_DIR / "boroughs.parquet")
+
 
 #### Choropleth map -----
 contiguous_usa = gpd.read_file(gplt.datasets.get_path("contiguous_usa"))
-gplt.choropleth(
-    df=contiguous_usa,
-    hue="population",
-    cmap="Reds",
-    legend=True,
-    legend_kwargs={"orientation": "horizontal"},
-)
+try:
+    gplt.choropleth(
+        df=contiguous_usa,
+        hue="population",
+        cmap="Reds",
+        legend=True,
+        legend_kwargs={"orientation": "horizontal"},
+    )
+except AttributeError as e:
+    ### Known geoplot/shapely incompatibility with multi-part polygons in this
+    ### dataset (e.g. Michigan/Hawaii). This plot is illustrative only and
+    ### unrelated to downstream data, so skip it rather than block the script ----
+    print(f"Skipping contiguous_usa choropleth due to a geoplot error: {e}")
 
 
 ## ---- Converting point data up to higher-order geographies -------------------
@@ -121,14 +146,18 @@ ny_tracts_sj = ny_tracts_sj[["GEOID", "price", "geometry"]]
 ny_tracts_agg = ny_tracts_sj.dissolve(by="GEOID", aggfunc="mean")
 
 ### Visualise the distribution of price across census tract ----
-gplt.choropleth(
-    ny_tracts_agg,
-    hue="price",
-    cmap="inferno_r",
-    legend=True,
-    figsize=(60, 15),
-    legend_kwargs={"orientation": "vertical"},
-)
+try:
+    gplt.choropleth(
+        ny_tracts_agg,
+        hue="price",
+        cmap="inferno_r",
+        legend=True,
+        figsize=(60, 15),
+        legend_kwargs={"orientation": "vertical"},
+    )
+except AttributeError as e:
+    ### Same geoplot/shapely multi-part polygon incompatibility as above ----
+    print(f"Skipping ny_tracts_agg choropleth due to a geoplot error: {e}")
 
 ### Exclude outliers ----
 #### Get mean and standard deviation of price ----
@@ -138,23 +167,33 @@ stdev = statistics.stdev(ny_tracts_agg["price"].dropna())
 #### Drop records that are outliers ----
 ny_tracts_agg = ny_tracts_agg[ny_tracts_agg["price"] < mean_price + stdev]
 
+### Persist immediately, before the geoviews plot below, so downstream
+### scripts (e.g. spatial_randomness.py) can load it even if that plot fails ----
+ny_tracts_agg.to_parquet(DATA_DIR / "ny_tracts_agg.parquet")
+
 #### Plot ----
-gplt.choropleth(
-    ny_tracts_agg,
-    hue="price",
-    cmap="inferno_r",
-    legend=True,
-    figsize=(60, 15),
-    legend_kwargs={"orientation": "vertical"},
-)
+try:
+    gplt.choropleth(
+        ny_tracts_agg,
+        hue="price",
+        cmap="inferno_r",
+        legend=True,
+        figsize=(60, 15),
+        legend_kwargs={"orientation": "vertical"},
+    )
+except AttributeError as e:
+    print(f"Skipping ny_tracts_agg choropleth due to a geoplot error: {e}")
 
 #### Plot with geoviews ----
-map = geoviews.Polygons(data=ny_tracts_agg, vdims=["price", "GEOID"]).opts(
-    height=600,
-    width=900,
-    title="NYC Tract Price Distribution",
-    tools=["hover", "wheel_zoom", "box_select"],
-    cmap="viridis",
-    colorbar=True,
-    colorbar_position="bottom",
-)
+try:
+    map = geoviews.Polygons(data=ny_tracts_agg, vdims=["price", "GEOID"]).opts(
+        height=600,
+        width=900,
+        title="NYC Tract Price Distribution",
+        tools=["hover", "wheel_zoom", "box_select"],
+        cmap="viridis",
+        colorbar=True,
+        colorbar_position="bottom",
+    )
+except AttributeError as e:
+    print(f"Skipping geoviews plot due to a geometry compatibility error: {e}")

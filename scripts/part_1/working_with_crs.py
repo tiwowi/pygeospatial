@@ -48,9 +48,6 @@ plt.show()
 world_ae = world.to_crs(crs="ESRI:54032")
 capitals_ae = capitals.to_crs(crs="ESRI:54032")
 
-### Check the CRS ----
-world_ae.crs
-
 ### Plot a map ----
 fig, ax = plt.subplots(figsize=(15, 10))
 world_ae.plot(ax=ax, color="blue", alpha=0.5)
